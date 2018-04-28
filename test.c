@@ -96,14 +96,112 @@ int main()
 void *pthread_service(void* sfd)
 {
 	int connectfd = *(int *)sfd;
+	int receive_bytes,send_bytes;
+	hislip_message header;
+	while(1)
+	{
+		if((receive_bytes = tcp_server_read(connectfd,&header,MESSAGE_HEAD_SIZE,0)) == 0)
+		{
+
+			fprintf(stderr,"receive 0 byte\n");
+
+		}
+
+		if(receive_bytes < MESSAGE_HEAD_SIZE)
+		
+			continue;
+
+
+		if(head.prologue != htons(MESSAGE_PROLOGUE))//verify the message heade
+		{
+		
+			fprintf(stderr,"invalid header\n");
+			fatal_error(header,PoorlyFormedMessageHeader,NULL);
+		}
+		switch(header.message_type)
+		{
+			case Initialize: sync_initialize_response(&header,SERVER_PROTOCOL_VERSION,session[i]sessionID);
+			tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
+		}
+	}
 }
+
+
+
+int tcp_server_read(int fd,void *buffer,int length,int timeout)
+{
+	int res;
+	struct timeval time;
+	time.tv_sec = 0;
+	time.tv_usec = timeout*1000;
+
+	fd_set rdfs;
+	FD_ZERO(&rdfs);
+	FD_SET(fd,&rdfs);
+
+	if(timeout)
+	
+		res = select(fd+1,&rdfs,NULL,NULL,&time);
+	
+	else
+		res = select(fd+1,&rdfs,NULL,NULL,NULL);
+
+	if(res == -1)
+
+		return -1;
+
+	else if(res == 0)
+
+		fprintf(stderr,"timeout\n");
+
+	else
+
+		res = read(fd,buffer,length);//return bytes
+		return res;
+}
+
+
+int tcp_server_write(int fd,void *buffer,int length,int timeout)
+{
+	int res;
+	struct timeval time;
+	time.tv_sec = 0;
+	time.usec = timeout*1000;
+
+	fd_set wdfs;
+	FD_ZERO(&wdfs);
+	FD_SET(fd,&wdfs);
+
+	if(timeout)
+	
+		res = select(fd+1,NULL,&wdfs,NULL,&time);
+
+	else
+
+		res = select(fd+1,NULL,&wdfs,NULL,NULL);
+
+	if(res == -1)	
+		
+		return -1;
+
+	else if(res == 0)
+
+		fprintf(stderr,"timeout\n");
+
+	else
+
+		return write(fd,buffer,length);
+	
+}
+
 
 
 
 int sync_initialize_response(hislip_message *send_message,uint16_t server_protocol_version,int sessionID)
 {
 	memset(send_message,0,sizeof(hislip_message));
-	strncpy(send_message->prologue,"HS",2);
+	//	strncpy(send_message->prologue,"HS",2);
+	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = InitializeResponse;
 	send_message->control_code = 0x01;//overlap mode,0:synchonized mode
 	send_message->message_parameter.s.UpperWord = htons(server_protocol_version);
@@ -118,10 +216,10 @@ int async_initialize_response(hislip_message *send_message,uint32_t server_vendo
 {
 	memset(send_message,0,sizeof(hislip_message));
 	//	strncpy(send_message->prologue,"HS",2);
-	send_message->prologue = MESSAGE_PROLOGUE;
+	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncInitializeResponse;
 	send_message->control_code = 0x01;//overlap mode,0:synchonized mode
-	send_message->message_parameter.s.value = htonl(server_vendorID);
+	send_message->message_parameter.s.value = htons(server_vendorID);
 	send_messgae->data_length = 0;
 	//return sizeof(hislip_message);
 }
@@ -131,7 +229,7 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 {
 	memset(send_message,0,sizeof(hislip_message));
 	//	strncpy(send_message->prologue,"HS",2);
-	send_message->prologue = MESSAGE_PROLOGUE;
+	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncMaximumMessageResponse;
 	send_message->control_code = 0;
 	send_messge->message_parameter = 0;
@@ -147,7 +245,7 @@ int async_lock_info_response(hislip_message *send_message,int value)//valuo=0:no
 {
 	memset(send_message,0,sizeof(hislip_message));
 	//	strncpy(send_message->prologue,"HS",2);
-	send_message->prologue = MESSAGE_PROLOGUE;
+	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncLockInfoResponse;
 	send_message->control_code = value;
 	send_messge->message_parameter = 0;
@@ -159,7 +257,7 @@ int async_lock_response(hislip_message *send_message,uint8_t result)//result=0:f
 {                                                                   //request a lock or release a lock
 	memset(send_message,0,sizeof(hislip_message));
 	//	strncpy(send_message->prologue,"HS",2);
-	send_message->prologue = MESSAGE_PROLOGUE;
+	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncLockResponse;
 	send_message->control_code = result;
 	send_messge->message_parameter = 0;
@@ -172,7 +270,7 @@ int fatal_error(hislip_message *send_message,uint8_t error_code,char *message)
 {
 	memset(send_message,0,sizeof(hislip_message));
 	//	strncpy(send_message->prologue,"HS",2);
-	send_message->prologue = MESSAGE_PROLOGUE;
+	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = FatalError;
 	send_message->control_code = error_code;
 	send_messge->message_parameter = 0;
@@ -187,14 +285,14 @@ int fatal_error(hislip_message *send_message,uint8_t error_code,char *message)
 }
 
 
-int info_communication(hislip_message *send_message,int RMT,uint32_t messageID,char *data,uint64_t len)//RMT=1:delivered;RMT=0:not delivered
+int info_communication(hislip_message *send_message,int RMT,uint32_t messageID,char *data[],uint64_t len)//RMT=1:delivered;RMT=0:not delivered
 {
 	memset(send_message,0,sizeof(hislip_message));
-	send_message->prologue = MESSAGE_PROLOGUE;
+	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = DataEnd;
 	send_message->control_code = RMT;
 	send_message->message_parameter.messageID = messageID;
-	memcpy(((char *)&send_message->prologue + 16),data,len);
+	memcpy(((char *)&send_message->prologue + 16),data[],len);
 	send_message->data_length = len;
 }
 
