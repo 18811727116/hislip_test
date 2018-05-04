@@ -232,9 +232,9 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncMaximumMessageSizeResponse;
 	send_message->control_code = 0;
-	send_message->message_parameter = 0;
+	send_message->message_parameter = 0;//incompatible type
 	send_message->data_length = 0x08;
-	uint64_t *p = ((char *)&send_message->prologue) + 16;//
+	uint64_t *p = ((char *)&send_message->prologue) + 16;//incompatible pointer type
 	*p = max_size;
 	return;
 	
@@ -248,7 +248,7 @@ int async_lock_info_response(hislip_message *send_message,int value)//valuo=0:no
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncLockInfoResponse;
 	send_message->control_code = value;
-	send_message->message_parameter = 0;
+	send_message->message_parameter = 0;//incompatible type
 	send_message->data_length = 0;	
 	return;
 }
@@ -261,7 +261,7 @@ int async_lock_response(hislip_message *send_message,uint8_t result)//result=0:f
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncLockResponse;
 	send_message->control_code = result;
-	send_message->message_parameter = 0;
+	send_message->message_parameter = 0;//incompatible type
 	send_message->data_length = 0;
 	return;
 }
@@ -274,7 +274,7 @@ int fatal_error(hislip_message *send_message,uint8_t error_code,char *message)
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = FatalError;
 	send_message->control_code = error_code;
-	send_message->message_parameter = 0;
+	send_message->message_parameter = 0;//incompatible type
 	int len = 0;
 	if(message)
 	{
