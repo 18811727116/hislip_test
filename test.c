@@ -33,17 +33,16 @@ void *pthread_service(void* sfd)
 	int receive_bytes,send_bytes;
 
 	hislip_message header;
-	//char *subaddress;
-	void *payload = NULL;
+
 
 	while(1)
 	{
 		
 		if((receive_bytes = tcp_server_read(connectfd,&header,MESSAGE_HEADER_SIZE,0)) == 0)
-		{
+		{//data from client are store in header(from struct hislip_message's first address)
 
 			printf("receive 0 byte\n");
-		//	close(connectfd);
+			close(connectfd);
 
 		}
 
@@ -60,40 +59,17 @@ void *pthread_service(void* sfd)
 			continue;
 		}
 
-		/*if(header.data_length > 0)
-		{
-			if(header.data_length > server_config->payload_size_max)
-			{
-				printf("maximum payload size exceeded\n");
-				continue;
-			}
-
-			payload = malloc(header.data_length);
-
-			if(payload == NULL)
-			{
-				printf("malloc failed\n");
-				continue;
-			}
-
-			if((receive_bytes = tcp_read(connectfd,payload,header.data_length,0)) == 0)
-			{
-				printf("client closed connection\n");
-				close(connectfd);
-			}
-		}*/
+		
 		switch(header.message_type)
 		{
 			case Initialize:
 				{
-					//header.message_parameter.s.LowerWord = session_id;
 			                sync_initialize_response(&header,SERVER_PROTOCOL_VERSION,session_id);
 		  			tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 					break;
 				}
 			case AsyncInitialize:
 				{
-				       //	uint16_t sessionID = ntohs(header.parameter.a.LowerWord);
 					async_initialize_response(&header,SERVER_VENDOR_ID);
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 				        break;
@@ -101,6 +77,7 @@ void *pthread_service(void* sfd)
 			case AsyncMaximumMessageSize:
 				{
 					hislip_message *p = (hislip_message *)malloc(MESSAGE_HEADER_SIZE+8);
+					//because malloc function return a void * pointer
 					async_maximum_message_size_response(p,0x100000);//1Mbytes
 					tcp_server_write(connectfd,p,MESSAGE_HEADER_SIZE+8,0);
 					free(p);
@@ -120,6 +97,7 @@ void *pthread_service(void* sfd)
 					int len = sizeof(buf);
 					info_communication(&header,MessageID,buf,len);
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE+len,0);
+					break;
 				}
 			default:	break;
 		}
@@ -146,7 +124,7 @@ int tcp_server_read(int fd,void *buffer,int length,int timeout)
 	else
 		res = select(fd+1,&rdfs,NULL,NULL,NULL);
 
-	if(res == -1)
+	if(res == -1)//error
 
 		return -1;
 
@@ -200,14 +178,13 @@ int tcp_server_write(int fd,void *buffer,int length,int timeout)
 int sync_initialize_response(hislip_message *send_message,uint16_t server_protocol_version,int sessionID)
 {
 	memset(send_message,0,sizeof(hislip_message));
-	//	strncpy(send_message->prologue,"HS",2);
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = InitializeResponse;
 	send_message->control_code = 0x01;//overlap mode,0:synchonized mode
 	send_message->message_parameter.s.UpperWord = htons(server_protocol_version);
 	send_message->message_parameter.s.LowerWord = htons(sessionID);
 	send_message->data_length = 0;
-	return;
+	return 0;
 
 }
 
@@ -215,28 +192,31 @@ int sync_initialize_response(hislip_message *send_message,uint16_t server_protoc
 int async_initialize_response(hislip_message *send_message,uint32_t server_vendorID)
 {
 	memset(send_message,0,sizeof(hislip_message));
-	//	strncpy(send_message->prologue,"HS",2);
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncInitializeResponse;
-	send_message->control_code = 0x01;//overlap mode,0:synchonized mode
+	send_message->control_code = 0;
 	send_message->message_parameter.value = htons(server_vendorID);
 	send_message->data_length = 0;
-	return;
+	return 0;
 }
 
 
 int async_maximum_message_size_response(hislip_message *send_message,uint64_t max_size)
 {
 	memset(send_message,0,sizeof(hislip_message));
-	//	strncpy(send_message->prologue,"HS",2);
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncMaximumMessageSizeResponse;
 	send_message->control_code = 0;
-	send_message->message_parameter = 0;//incompatible type
 	send_message->data_length = 0x08;
-	uint64_t *p = ((char *)&send_message->prologue) + 16;//incompatible pointer type
-	*p = max_size;
-	return;
+	//char *p = ((char *)&send_message->prologue) + 16;
+	//uint64_t p1 = (uint64_t *)p;
+	char *p;
+	p = (char *)&send_message->prologue;
+	p += 16;
+	uint64_t *p1;
+	p1 = (uint64_t *)p;
+	*p1 = htonl(max_size);
+	return 0;
 	
 }
 
@@ -244,37 +224,31 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 int async_lock_info_response(hislip_message *send_message,int value)//valuo=0:no exclusive lock granted;value=1:exclusive lock granted
 {
 	memset(send_message,0,sizeof(hislip_message));
-	//	strncpy(send_message->prologue,"HS",2);
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncLockInfoResponse;
 	send_message->control_code = value;
-	send_message->message_parameter = 0;//incompatible type
 	send_message->data_length = 0;	
-	return;
+	return 0;
 }
 
 
 int async_lock_response(hislip_message *send_message,uint8_t result)//result=0:failure;result=1:success;result=3:error
 {                                                                   //request a lock or release a lock
 	memset(send_message,0,sizeof(hislip_message));
-	//	strncpy(send_message->prologue,"HS",2);
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncLockResponse;
 	send_message->control_code = result;
-	send_message->message_parameter = 0;//incompatible type
 	send_message->data_length = 0;
-	return;
+	return 0;
 }
 
 
 int fatal_error(hislip_message *send_message,uint8_t error_code,char *message)
 {
 	memset(send_message,0,sizeof(hislip_message));
-	//	strncpy(send_message->prologue,"HS",2);
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = FatalError;
 	send_message->control_code = error_code;
-	send_message->message_parameter = 0;//incompatible type
 	int len = 0;
 	if(message)
 	{
@@ -282,7 +256,7 @@ int fatal_error(hislip_message *send_message,uint8_t error_code,char *message)
 		memcpy(send_message,message,len);
 		send_message->data_length = htobe64(len);
 	}
-	return;
+	return 0;
 }
 
 
@@ -304,7 +278,7 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
 	messageID = messageID + 2;
 	memcpy(((char *)&send_message->prologue + 16),data,len);
         send_message->data_length = len;
-	return;
+	return 0;
 
 }
 
@@ -379,7 +353,7 @@ int main()
 		pthread_detach(thread);
 	}
 	close(listenfd);
-	return;
+	return 0;
 }
 
 
