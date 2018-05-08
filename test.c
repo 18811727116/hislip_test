@@ -43,8 +43,10 @@ void *pthread_service(void* sfd)
 
 			printf("receive 0 byte\n");
 			close(connectfd);
-
+			
 		}
+
+		printf("already received message\n");
 
 		if(receive_bytes < MESSAGE_HEADER_SIZE)
 		
@@ -59,44 +61,62 @@ void *pthread_service(void* sfd)
 			continue;
 		}
 
-		
+		printf("message header is right\n");
+
 		switch(header.message_type)
 		{
 			case Initialize:
 				{
+					printf("receive Initialize from client\n");
 			                sync_initialize_response(&header,SERVER_PROTOCOL_VERSION,session_id);
 		  			tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 					break;
 				}
 			case AsyncInitialize:
 				{
+					printf("receive AsyncInitialize from client\n");
 					async_initialize_response(&header,SERVER_VENDOR_ID);
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 				        break;
 				}
 			case AsyncMaximumMessageSize:
 				{
-					hislip_message *p = (hislip_message *)malloc(MESSAGE_HEADER_SIZE+8);
-					//because malloc function return a void * pointer
-					async_maximum_message_size_response(p,0x100000);//1Mbytes
-					tcp_server_write(connectfd,p,MESSAGE_HEADER_SIZE+8,0);
-					free(p);
+					printf("receive AsyncMaximumMessageSize from client\n");
+					sleep(1);
+					async_maximum_message_size_response(&header,0x100000);
+					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE+8,0);
+					
 					break;
+				}
+			case AsyncLockInfo:
+				{
+					printf("receive AsyncLockInfo from client\n");
+					async_lock_info_response(&header,1);
+					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 				}
 			case AsyncLock:
 				{
+					printf("receive AsyncLock from client\n");
 					async_lock_response(&header,1);//result = 1:success
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 					break;	
 				}
 			case DataEnd:	
 				{
+					printf("receive DataEnd from client\n");
 					uint32_t MessageID = 0xffffff00;
-					char buf[1000];
-					strcpy(buf,"LitePoint,IQxstream-M,IQ020FA0098,1.7.0\n");
-					int len = sizeof(buf);
-					info_communication(&header,MessageID,buf,len);
-					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE+len,0);
+					char buf[] = {"LitePoint,IQxstream-M,IQ020FA0098,1.7.0"};
+					//strcpy(buf,"LitePoint,IQxstream-M,IQ020FA0098,1.7.0\n");
+					uint64_t len = sizeof(buf);
+
+					uint32_t c_high,c_low;
+					c_high = (len >> 32) & 0xffffffff;
+					c_low = len & 0xffffffff;
+					uint64_t big_end = htonl(c_low);
+					big_end = (big_end << 32) | htonl(c_high);
+
+					info_communication(&header,MessageID,big_end,len);
+					tcp_server_write(connectfd,&header,big_end,0);
 					break;
 				}
 			default:	break;
@@ -207,7 +227,15 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncMaximumMessageSizeResponse;
 	send_message->control_code = 0;
-	send_message->data_length = 0x08;
+
+	uint64_t a = 0x08;
+	uint32_t a_high,a_low;
+	a_high = (a >> 32) & 0xffffffff;
+	a_low = a & 0xffffffff;
+	uint64_t big_end = htonl(a_low);
+	big_end = (big_end << 32) | htonl(a_high);
+
+	send_message->data_length = big_end;
 	//char *p = ((char *)&send_message->prologue) + 16;
 	//uint64_t p1 = (uint64_t *)p;
 	char *p;
@@ -215,7 +243,16 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 	p += 16;
 	uint64_t *p1;
 	p1 = (uint64_t *)p;
-	*p1 = htonl(max_size);
+
+	
+	uint32_t b_high,b_low;
+	b_high = (max_size >> 32) & 0xffffffff;
+	b_low = max_size & 0xffffffff;
+	big_end = htonl(b_low);
+	big_end = (big_end << 32) | htonl(b_high);
+
+	*p1 = big_end;
+
 	return 0;
 	
 }
@@ -266,7 +303,7 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = Data;
 	send_message->control_code = 0;
-	send_message->message_parameter.messageID = messageID;
+	send_message->message_parameter.messageID = htonl(messageID);
 	messageID = messageID + 2;
 	memcpy(((char *)&send_message->prologue + 16),data,len);
 	send_message->data_length = len;
@@ -274,7 +311,7 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
         send_message->message_type = DataEnd;
         send_message->control_code = 0;
-	send_message->message_parameter.messageID = messageID;
+	send_message->message_parameter.messageID = htonl(messageID);
 	messageID = messageID + 2;
 	memcpy(((char *)&send_message->prologue + 16),data,len);
         send_message->data_length = len;
@@ -292,7 +329,7 @@ int main()
 	int number = 0;
 	if((listenfd = socket(AF_INET,SOCK_STREAM,0)) == -1)
 	{
-		perror("create socket failed");
+		perror("create socket failed\n");
 	        close(listenfd);
 		exit(1);
 	}
@@ -307,14 +344,14 @@ int main()
 
 	if(bind(listenfd,(struct sockaddr *)&serveraddr,sizeof(serveraddr)) == -1)
 	{
-		perror("bind failed");
+		perror("bind failed\n");
 	        close(listenfd);
 		exit(1);
 	}
 
 	if((listen(listenfd,256)) == -1)
 	{
-		perror("listen failed");
+		perror("listen failed\n");
 		close(listenfd);
 		exit(1);
 	}
@@ -327,11 +364,11 @@ int main()
 		connectfd = accept(listenfd,(struct sockaddr *)&clientaddr,&sin_size);
 		if(connectfd == -1)
 		{
-			perror("accept failed");
+			perror("accept failed\n");
 			close(listenfd);
 			exit(1);
 		}
-		printf("client connect on server");
+		printf("client connect on server\n");
 
 		if(number >= MAX_CLIENT)
 		{
