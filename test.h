@@ -15,7 +15,6 @@ typedef struct hislip_message
         uint16_t prologue;
         uint8_t message_type;//1 byte
         uint8_t control_code;//1 byte
-        uint32_t message_paremeter;//4 bytes
         union
         {
                 struct parameter
