@@ -26,7 +26,6 @@ uint16_t session_id = 100;
 int fdbuf[MAX_CLIENT] = {0};
 
 
-
 void *pthread_service(void* sfd)
 {
 	int connectfd = *(int *)sfd;
