@@ -114,6 +114,16 @@ void *pthread_service(void* sfd)
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE + len,0);
 					break;
 				}
+			case AsyncStatusQuery:
+				{
+					printf("receive AsyncStatusQuery from client");
+					
+				}
+			case AsyncRemoteLocalResponse:
+				{
+					printf("receive AsyncRemoteLocalResponse from client");
+					
+				}
 			default:	break;
 		}
 	}
@@ -229,10 +239,11 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 	a_low = a & 0xffffffff;
 	uint64_t big_end = htonl(a_low);
 	big_end = (big_end << 32) | htonl(a_high);
-
+	/*a = big_end(a);
+	send_message->data_length = a;*/
 	send_message->data_length = big_end;
-	//char *p = ((char *)&send_message->prologue) + 16;
-	//uint64_t p1 = (uint64_t *)p;
+	/*char *p = ((char *)&send_message->prologue) + 16;
+	uint64_t p1 = (uint64_t *)p;*/
 	char *p;
 	p = (char *)&send_message->prologue;
 	p += 16;
@@ -245,9 +256,9 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 	b_low = max_size & 0xffffffff;
 	big_end = htonl(b_low);
 	big_end = (big_end << 32) | htonl(b_high);
-
+	/*max_size = big_end(max_size);
+	*p1 = max_size;*/
 	*p1 = big_end;
-
 	return 0;
 	
 }
@@ -300,7 +311,7 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
         send_message->control_code = 0;
 	send_message->message_parameter.messageID = htonl(messageID);
 	messageID = messageID + 2;
-	printf("messageID = %ld\n",messageID);
+	printf("messageID = %d\n",messageID);
 
 	uint32_t c_high,c_low;
 	c_high = (len >> 32) & 0xffffffff;
@@ -308,13 +319,26 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
 	uint64_t big_end = htonl(c_low);
 	big_end = (big_end << 32) | htonl(c_high);
 	printf("big_end = %ld\n",big_end);
-
+	
 	memcpy(((char *)&send_message->prologue + 16),data,len);
+	/*len = big_end(len);
+	send_message->data_length = len;*/
         send_message->data_length = big_end;
+	
 	return 0;
 
 }
 
+
+int big_end(uint64_t len)
+{
+	uint32_t high,low;
+	high = (len >> 32) & 0xffffffff;
+	low = len & 0xffffffff;
+	uint64_t bigend = htonl(low);
+	bigend = (bigend << 32) | htonl(high);
+	return bigend;
+}
 
 
 int main()
