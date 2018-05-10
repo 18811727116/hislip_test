@@ -94,6 +94,7 @@ int async_lock_info_response(hislip_message *send_message,int value);
 int async_lock_response(hislip_message *send_message,uint8_t result);
 int fatal_error(hislip_message *send_message,uint8_t error_code,char *message);
 int info_communication(hislip_message *send_message,uint32_t messageID,char data[],uint64_t len);
+int big_end(uint64_t len);
 
 #endif
 
