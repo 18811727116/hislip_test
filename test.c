@@ -30,7 +30,7 @@ int fdbuf[MAX_CLIENT] = {0};
 void *pthread_service(void* sfd)
 {
 	int connectfd = *(int *)sfd;
-	int receive_bytes,send_bytes;
+	int receive_bytes;
 
 	hislip_message header;
 
@@ -93,6 +93,7 @@ void *pthread_service(void* sfd)
 					printf("receive AsyncLockInfo from client\n");
 					async_lock_info_response(&header,1);
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
+					break;
 				}
 			case AsyncLock:
 				{
@@ -106,17 +107,11 @@ void *pthread_service(void* sfd)
 					printf("receive DataEnd from client\n");
 					uint32_t MessageID = 0xffffff00;
 					char buf[] = {"LitePoint,IQxstream-M,IQ020FA0098,1.7.0"};
-					//strcpy(buf,"LitePoint,IQxstream-M,IQ020FA0098,1.7.0\n");
 					uint64_t len = sizeof(buf);
+					printf("len = %ld\n",len);
 
-					uint32_t c_high,c_low;
-					c_high = (len >> 32) & 0xffffffff;
-					c_low = len & 0xffffffff;
-					uint64_t big_end = htonl(c_low);
-					big_end = (big_end << 32) | htonl(c_high);
-
-					info_communication(&header,MessageID,big_end,len);
-					tcp_server_write(connectfd,&header,big_end,0);
+					info_communication(&header,MessageID,buf,len);
+					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE + len,0);
 					break;
 				}
 			default:	break;
@@ -301,20 +296,21 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
 {
 	memset(send_message,0,sizeof(hislip_message));
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
-	send_message->message_type = Data;
-	send_message->control_code = 0;
-	send_message->message_parameter.messageID = htonl(messageID);
-	messageID = messageID + 2;
-	memcpy(((char *)&send_message->prologue + 16),data,len);
-	send_message->data_length = len;
-
-	send_message->prologue = htons(MESSAGE_PROLOGUE);
         send_message->message_type = DataEnd;
         send_message->control_code = 0;
 	send_message->message_parameter.messageID = htonl(messageID);
 	messageID = messageID + 2;
+	printf("messageID = %ld\n",messageID);
+
+	uint32_t c_high,c_low;
+	c_high = (len >> 32) & 0xffffffff;
+	c_low = len & 0xffffffff;
+	uint64_t big_end = htonl(c_low);
+	big_end = (big_end << 32) | htonl(c_high);
+	printf("big_end = %ld\n",big_end);
+
 	memcpy(((char *)&send_message->prologue + 16),data,len);
-        send_message->data_length = len;
+        send_message->data_length = big_end;
 	return 0;
 
 }
