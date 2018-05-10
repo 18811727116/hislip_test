@@ -220,7 +220,7 @@ int async_initialize_response(hislip_message *send_message,uint32_t server_vendo
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncInitializeResponse;
 	send_message->control_code = 0;
-	send_message->message_parameter.value = htons(server_vendorID);
+	send_message->message_parameter.value = htonl(server_vendorID);
 	send_message->data_length = 0;
 	return 0;
 }
