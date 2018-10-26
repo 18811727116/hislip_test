@@ -25,13 +25,10 @@
 uint16_t session_id = 100;
 int fdbuf[MAX_CLIENT] = {0};
 
-<<<<<<< HEAD
 uint8_t i = 0;//number of locks
 uint8_t j = 0;//exclusive locks
 uint8_t jj = 0;
-=======
 
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 void *pthread_service(void* sfd)
 {
 	int connectfd = *(int *)sfd;
@@ -96,18 +93,14 @@ void *pthread_service(void* sfd)
 			case AsyncLockInfo:
 				{
 					printf("receive AsyncLockInfo from client\n");
-<<<<<<< HEAD
 					async_lock_info_response(&header,i);
-=======
 					async_lock_info_response(&header,1);
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 					break;
 				}
 			case AsyncLock:
 				{
 					printf("receive AsyncLock from client\n");
-<<<<<<< HEAD
 					if(j == 1)//exclusive lock have locked,stop request a lock
 						{
 							if(header.control_code == 1)//request a lock
@@ -155,11 +148,10 @@ void *pthread_service(void* sfd)
 					async_device_clear_acknowledge(&header,0x01);
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 					i = 0;
-=======
+
 					async_lock_response(&header,1);//result = 1:success
 					tcp_server_write(connectfd,&header,MESSAGE_HEADER_SIZE,0);
 					break;	
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 				}
 			case DataEnd:	
 				{
@@ -175,21 +167,11 @@ void *pthread_service(void* sfd)
 				}
 			case AsyncStatusQuery:
 				{
-<<<<<<< HEAD
 					printf("receive AsyncStatusQuery from client\n");
-=======
-					printf("receive AsyncStatusQuery from client");
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
-					
 				}
 			case AsyncRemoteLocalResponse:
 				{
-<<<<<<< HEAD
 					printf("receive AsyncRemoteLocalResponse from client\n");
-=======
-					printf("receive AsyncRemoteLocalResponse from client");
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
-					
 				}
 			default:	break;
 		}
@@ -264,12 +246,6 @@ int tcp_server_write(int fd,void *buffer,int length,int timeout)
 	
 }
 
-
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 int sync_initialize_response(hislip_message *send_message,uint16_t server_protocol_version,int sessionID)
 {
 	memset(send_message,0,sizeof(hislip_message));
@@ -304,25 +280,20 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 	send_message->control_code = 0;
 
 	uint64_t a = 0x08;
-<<<<<<< HEAD
+
 	/*uint32_t a_high,a_low;
-=======
 	uint32_t a_high,a_low;
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 	a_high = (a >> 32) & 0xffffffff;
 	a_low = a & 0xffffffff;
 	uint64_t big_end = htonl(a_low);
 	big_end = (big_end << 32) | htonl(a_high);
-<<<<<<< HEAD
 	send_message->data_length = big_end;*/
 	a = big_end(a);
 	send_message->data_length = a;
 	
-=======
 	/*a = big_end(a);
 	send_message->data_length = a;*/
 	send_message->data_length = big_end;
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 	/*char *p = ((char *)&send_message->prologue) + 16;
 	uint64_t p1 = (uint64_t *)p;*/
 	char *p;
@@ -331,57 +302,40 @@ int async_maximum_message_size_response(hislip_message *send_message,uint64_t ma
 	uint64_t *p1;
 	p1 = (uint64_t *)p;
 
-	
-<<<<<<< HEAD
 	/*uint32_t b_high,b_low;
-=======
 	uint32_t b_high,b_low;
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 	b_high = (max_size >> 32) & 0xffffffff;
 	b_low = max_size & 0xffffffff;
 	big_end = htonl(b_low);
 	big_end = (big_end << 32) | htonl(b_high);
-<<<<<<< HEAD
 	*p1 = big_end;*/
 	max_size = big_end(max_size);
 	*p1 = max_size;
 	
-=======
+
 	/*max_size = big_end(max_size);
 	*p1 = max_size;*/
 	*p1 = big_end;
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 	return 0;
 	
 }
 
-
-<<<<<<< HEAD
-int async_lock_info_response(hislip_message *send_message)//valuo=0:no exclusive lock granted;value=1:exclusive lock granted
-=======
 int async_lock_info_response(hislip_message *send_message,int value)//valuo=0:no exclusive lock granted;value=1:exclusive lock granted
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 {
 	memset(send_message,0,sizeof(hislip_message));
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = AsyncLockInfoResponse;
-<<<<<<< HEAD
+
 	send_message->control_code = jj;
 	send_message->data_length = i;	
-=======
 	send_message->control_code = value;
+
 	send_message->data_length = 0;	
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
+
 	return 0;
 }
 
-
-<<<<<<< HEAD
-int async_lock_response(hislip_message *send_message,uint8_t result)
-//result=0:failure;result=1:success;result=3:error
-=======
 int async_lock_response(hislip_message *send_message,uint8_t result)//result=0:failure;result=1:success;result=3:error
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 {                                                                   //request a lock or release a lock
 	memset(send_message,0,sizeof(hislip_message));
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
@@ -390,20 +344,12 @@ int async_lock_response(hislip_message *send_message,uint8_t result)//result=0:f
 	send_message->data_length = 0;
 	return 0;
 }
-
-
-<<<<<<< HEAD
-
-int fatal_error(hislip_message *send_message,uint8_t error_code,char *message[])
-=======
 int fatal_error(hislip_message *send_message,uint8_t error_code,char *message)
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 {
 	memset(send_message,0,sizeof(hislip_message));
 	send_message->prologue = htons(MESSAGE_PROLOGUE);
 	send_message->message_type = FatalError;
 	send_message->control_code = error_code;
-<<<<<<< HEAD
 	if(message)
 	{
 		int len = 0;
@@ -433,7 +379,6 @@ int non_fatal_error(hislip_message *send_message,uint8_t error_code,char *messag
 	send_message->data_length = 0;
 	return 0;
 }
-=======
 	int len = 0;
 	if(message)
 	{
@@ -443,8 +388,6 @@ int non_fatal_error(hislip_message *send_message,uint8_t error_code,char *messag
 	}
 	return 0;
 }
-
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 
 int info_communication(hislip_message *send_message,uint32_t messageID,char data[],uint64_t len)//RMT=1:delivered;RMT=0:not delivered
 {
@@ -456,23 +399,19 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
 	messageID = messageID + 2;
 	printf("messageID = %d\n",messageID);
 
-<<<<<<< HEAD
+
 	/*uint32_t c_high,c_low;
-=======
 	uint32_t c_high,c_low;
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 	c_high = (len >> 32) & 0xffffffff;
 	c_low = len & 0xffffffff;
 	uint64_t big_end = htonl(c_low);
 	big_end = (big_end << 32) | htonl(c_high);
-<<<<<<< HEAD
 	printf("big_end = %ld\n",big_end);*/
 	
 	memcpy(((char *)&send_message->prologue + 16),data,len);
 	len = big_end(len);
 	send_message->data_length = len;
        // send_message->data_length = big_end;
-=======
 	printf("big_end = %ld\n",big_end);
 	
 	memcpy(((char *)&send_message->prologue + 16),data,len);
@@ -480,12 +419,10 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
 	send_message->data_length = len;*/
         send_message->data_length = big_end;
 	
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 	return 0;
 
 }
 
-<<<<<<< HEAD
 int async_device_clear_acknowledge(hislip_message *send_message,uint8_t future)
 {
 	memset(send_message,0,sizeof(hislip_message));
@@ -505,11 +442,7 @@ int async_remote_local_response(hislip_message *send_message)
 	return 0;
 }
 
-uint64_t big_end(uint64_t len)
-=======
-
 int big_end(uint64_t len)
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 {
 	uint32_t high,low;
 	high = (len >> 32) & 0xffffffff;
