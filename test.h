@@ -77,18 +77,16 @@ typedef enum //meiju,message type
 
 typedef enum //meiju,fatal error code
 {
-<<<<<<< HEAD
+
     UnidentifiedError,//0
-=======
     F_UnidentifiedError,//0
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
     PoorlyFormedMessageHeader,//1
     AttemptToUseConnectionWithoutBothChannelsEstablished,//2
     InvalidInitializationSequence,//3
     ServerRefusedConnectionDueToMaximumNumberOfClinetsExceeded//4
 }fatal_error_code;
 
-<<<<<<< HEAD
+
 typedef enum
 {
 	Unidentified_Error,
@@ -98,15 +96,13 @@ typedef enum
         MessageTooLarge
 }non_fatal_error_code;
 
-=======
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
 void *pthread_service(void* sfd);
 int tcp_server_read(int fd,void *buffer,int length,int timeout);
 int tcp_server_write(int fd,void *buffer,int length,int timeout);
 int sync_initialize_response(hislip_message *send_message,uint16_t server_protocol_version,int sessionID);
 int async_initialize_response(hislip_message *send_message,uint32_t server_vendorID);
 int async_maximum_message_size_response(hislip_message *send_message,uint64_t max_size);
-<<<<<<< HEAD
+
 int async_lock_info_response(hislip_message *send_message);
 int async_lock_response(hislip_message *send_message,uint8_t result);
 int fatal_error(hislip_message *send_message,uint8_t error_code,char *message[]);
@@ -115,13 +111,13 @@ int info_communication(hislip_message *send_message,uint32_t messageID,char data
 int async_remote_local_response(hislip_message *send_message);
 int async_device_clear_acknowledge(hislip_message *send_message,uint8_t future);
 uint64_t big_end(uint64_t len);
-=======
+
 int async_lock_info_response(hislip_message *send_message,int value);
 int async_lock_response(hislip_message *send_message,uint8_t result);
 int fatal_error(hislip_message *send_message,uint8_t error_code,char *message);
 int info_communication(hislip_message *send_message,uint32_t messageID,char data[],uint64_t len);
 int big_end(uint64_t len);
->>>>>>> 3f44f77480fce60f8d2fce7623e97ceec156af09
+
 
 #endif
 
